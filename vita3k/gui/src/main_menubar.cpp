@@ -24,6 +24,7 @@ namespace gui {
 static void draw_file_menu(FileMenuState &state) {
     if (ImGui::BeginMenu("File")) {
         ImGui::MenuItem("Install Firmware", nullptr, &state.firmware_install_dialog);
+        ImGui::MenuItem("Install .pkg", nullptr, &state.pkg_install_dialog);
         ImGui::MenuItem("Install Game", nullptr, &state.game_install_dialog);
         ImGui::EndMenu();
     }

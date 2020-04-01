@@ -66,6 +66,7 @@ struct LiveAreaState {
 
 struct FileMenuState {
     bool firmware_install_dialog = false;
+    bool pkg_install_dialog = false; 
     bool game_install_dialog = false;
 };
 

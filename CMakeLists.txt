@@ -50,6 +50,3 @@ if ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2 -mavx -mf16c")
 endif()
 
-add_subdirectory(external)
-add_subdirectory(vita3k)
-add_subdirectory(tools/gen-modules)
