@@ -31,6 +31,7 @@
 #include <nids/types.h>
 #include <np/state.h>
 #include <renderer/state.h>
+#include <psvpfsparser/F00DKeyEncryptorFactory.h>
 
 // The GDB Stub requires winsock.h on windows (included in above headers). Keep it here to prevent build errors.
 #ifdef USE_GDBSTUB
@@ -54,6 +55,13 @@ struct DisplayState {
 };
 
 struct HostState {
+    std::string title_id_src;
+    std::string title_id_dst;
+    std::string klicensee;
+    std::string zRIF;
+    F00DEncryptorTypes f00d_enc_type;
+    std::string f00d_arg;
+
     std::string game_version;
     std::string game_category;
     std::string game_short_title;

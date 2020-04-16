@@ -215,4 +215,22 @@ if (USE_VULKAN)
 	target_include_directories(vma INTERFACE VulkanMemoryAllocator/src)
 endif()
 
+set (Boost_USE_STATIC_LIBS ON)
+set (Boost_USE_MULTITHREADED ON)
+
+set (BOOST_COMPONENTS system 
+                      filesystem
+                      program_options)
+
+FIND_PACKAGE(Boost COMPONENTS ${BOOST_COMPONENTS} REQUIRED)
+
 add_subdirectory(ffmpeg)
+add_subdirectory(zlib)
+set(ZLIB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib")
+set(ZLIB_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/zlib/build/Debug/zlibstaticd.lib")
+add_subdirectory(libtomcrypt)
+set(LIBTOMCRYPT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/libtomcrypt/build/include")
+set(LIBTOMCRYPT_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/libtomcrypt/build/lib/tomcrypt.lib")
+add_subdirectory(libb64)
+add_subdirectory(libzRIF)
+add_subdirectory(psvpfsparser/cmake)
