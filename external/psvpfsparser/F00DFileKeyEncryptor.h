@@ -20,10 +20,6 @@ public:
 private:
    int load_cache_flat_file();
 
-   int load_cache_json_file();
-
-   int load_cache_file();
-
 public:
    int encrypt_key(const unsigned char* key, int key_size, unsigned char* drv_key) override;
 
