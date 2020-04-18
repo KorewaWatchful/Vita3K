@@ -9,5 +9,5 @@ add_library(${PROJECT} STATIC include/zRIF/keyflate.h
                               src/keyflate.c
                               src/licdec.cpp)
 
-include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(include)
+target_include_directories(${PROJECT} PUBLIC ${ZLIB_INCLUDE_DIR} ${LIBB64_INCLUDE_DIR} include)
+

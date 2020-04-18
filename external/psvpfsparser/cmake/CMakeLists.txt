@@ -78,10 +78,5 @@ source_group ("Source Files" FILES ${SOURCE_FILES})
 add_library(${PROJECT} ${HEADER_FILES} ${SOURCE_FILES} ${F00D_FILES} ${CRYPTO_FILES})
 
 target_link_libraries(${PROJECT} host ${Boost_LIBRARIES} libzRIF libb64 zlib libtomcrypt)
-
-include_directories(..)
-include_directories(../..)
-include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${ZLIB_INCLUDE_DIR})
-include_directories(${LIBTOMCRYPT_INCLUDE_DIR})
+target_include_directories(${PROJECT} PUBLIC .. ${Boost_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIR} ${LIBTOMCRYPT_INCLUDE_DIR} ${LIBB64_INCLUDE_DIR} ${LIBZRIF_INCLUDE_DIR})
 

@@ -31,7 +31,7 @@
 #include <nids/types.h>
 #include <np/state.h>
 #include <renderer/state.h>
-#include <psvpfsparser/F00DKeyEncryptorFactory.h>
+#include <F00DKeyEncryptorFactory.h>
 
 // The GDB Stub requires winsock.h on windows (included in above headers). Keep it here to prevent build errors.
 #ifdef USE_GDBSTUB

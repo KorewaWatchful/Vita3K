@@ -15,7 +15,7 @@ add_library(
 	src/sfo.cpp
 )
 
-target_include_directories(host PUBLIC include)
+target_include_directories(host PUBLIC include ${PSVPFSPARSER_INCLUDE_DIR})
 target_link_libraries(host PUBLIC psvpfsparser app audio config ctrl dialog io kernel miniz net nids np renderer sdl2 touch)
 if(USE_GDBSTUB)
 	target_link_libraries(host PUBLIC gdbstub)

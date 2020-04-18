@@ -8,8 +8,8 @@
 #include <boost/algorithm/string.hpp>
 #
 
-#include <libzRIF/include/zRIF/rif.h>
-#include <libzRIF/include/zRIF/licdec.h>
+#include <zRIF/rif.h>
+#include <zRIF/licdec.h>
 
 #include "PfsFilesystem.h"
 
