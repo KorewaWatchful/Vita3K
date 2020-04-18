@@ -17,7 +17,7 @@
 #include <zRIF/keyflate.h>
 #include <zRIF/rif.h>
 
-#include <libb64/b64/cdecode.h>
+#include <../libb64/include/b64/cdecode.h>
 
 #define MIN_KEY_SIZE 512
 #define MAX_KEY_SIZE 2048

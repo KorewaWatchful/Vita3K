@@ -2,6 +2,7 @@
 
 #include <string>
 #include <iostream>
+#include <host/state.h>
 
 #include <boost/program_options.hpp>
 
@@ -33,7 +34,7 @@ boost::program_options::options_description get_options_desc(bool include_deprec
     return desc;
 }
 
-int parse_options(int argc, char* argv[], PsvPfsParserConfig& cfg)
+int parse_options(int argc, char* argv[], HostState &host)
 {
    try
    {
@@ -53,7 +54,7 @@ int parse_options(int argc, char* argv[], PsvPfsParserConfig& cfg)
 
       if (vm.count(TITLE_ID_SRC_NAME))
       {
-         cfg.title_id_src = vm[TITLE_ID_SRC_NAME].as<std::string>();
+         host.title_id_src = vm[TITLE_ID_SRC_NAME].as<std::string>();
       }
       else
       {
@@ -63,7 +64,7 @@ int parse_options(int argc, char* argv[], PsvPfsParserConfig& cfg)
 
       if (vm.count(TITLE_ID_DST_NAME))
       {
-         cfg.title_id_dst = vm[TITLE_ID_DST_NAME].as<std::string>();
+         host.title_id_dst = vm[TITLE_ID_DST_NAME].as<std::string>();
       }
       else
       {
@@ -73,13 +74,13 @@ int parse_options(int argc, char* argv[], PsvPfsParserConfig& cfg)
 
       if (vm.count(KLICENSEE_NAME))
       {
-         cfg.klicensee = vm[KLICENSEE_NAME].as<std::string>();
+         host.klicensee = vm[KLICENSEE_NAME].as<std::string>();
       }
       else
       {
          if (vm.count(ZRIF_NAME))
          {
-            cfg.zRIF = vm[ZRIF_NAME].as<std::string>();
+            host.zRIF = vm[ZRIF_NAME].as<std::string>();
          }
          else
          {
@@ -110,18 +111,18 @@ int parse_options(int argc, char* argv[], PsvPfsParserConfig& cfg)
       {
          std::cout << "Warning. Option " << F00D_URL_NAME << " is deprecated. Switching to native implementation of F00D" << std::endl;
 
-         cfg.f00d_enc_type = F00DEncryptorTypes::native;
-         cfg.f00d_arg = std::string();
+         host.f00d_enc_type = F00DEncryptorTypes::native;
+         host.f00d_arg = std::string();
       }
       else if(!f00d_cache.empty())
       {
-         cfg.f00d_enc_type = F00DEncryptorTypes::file;
-         cfg.f00d_arg = f00d_cache;
+         host.f00d_enc_type = F00DEncryptorTypes::file;
+         host.f00d_arg = f00d_cache;
       }
       else
       {
-         cfg.f00d_enc_type = F00DEncryptorTypes::native;
-         cfg.f00d_arg = std::string();
+         host.f00d_enc_type = F00DEncryptorTypes::native;
+         host.f00d_arg = std::string();
       }
 
       return 0;

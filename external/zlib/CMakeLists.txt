@@ -1,0 +1,9 @@
+project(zlib)
+
+add_library(zlib INTERFACE)
+
+target_include_directories(zlib INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
+if (WIN32)
+    target_link_libraries(zlib INTERFACE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/zlibstaticd.lib")
+endif()

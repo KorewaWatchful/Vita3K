@@ -1,7 +1,6 @@
 #include "F00DFileKeyEncryptor.h"
 
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 #include <fstream>
 
@@ -55,7 +54,7 @@ int F00DFileKeyEncryptor::load_cache_flat_file()
 
    return 0;
 }
-
+/*
 int F00DFileKeyEncryptor::load_cache_json_file()
 {
    if(!boost::filesystem::exists(m_filePath))
@@ -114,21 +113,13 @@ int F00DFileKeyEncryptor::load_cache_file()
    else
       return -1;
 }
-
+*/
 int F00DFileKeyEncryptor::encrypt_key(const unsigned char* key, int key_size, unsigned char* drv_key)
 {
    if(key_size != 0x80 && 
       // key_size != 0xC0 && //TODO: need to implement padding
       key_size != 0x100)
       return -1;
-
-   if(!m_isCacheLoaded)
-   {
-      if(load_cache_file() != 0)
-         return -1;
-
-      m_isCacheLoaded = true;
-   }
 
    std::string keyStr = byte_array_to_string(key, key_size / 8);
 
