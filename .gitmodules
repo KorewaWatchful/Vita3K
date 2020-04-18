@@ -9,7 +9,7 @@
 	url = https://github.com/aquynh/capstone.git
 [submodule "external/crypto-algorithms"]
 	path = external/crypto-algorithms
-	url = https://github.com/B-Con/crypto-algorithms
+	url = https://github.com/KorewaWatchful/crypto-algorithms
 [submodule "external/dirent"]
 	path = external/dirent
 	url = https://github.com/tronkko/dirent
