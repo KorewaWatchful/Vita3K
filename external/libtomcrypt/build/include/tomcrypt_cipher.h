@@ -379,7 +379,7 @@ typedef struct {
 
 
 /** cipher descriptor table, last entry has "name == NULL" to mark the end of table */
-extern struct ltc_cipher_descriptor {
+struct ltc_cipher_descriptor {
    /** name of cipher */
    const char *name;
    /** internal ID */
@@ -633,7 +633,7 @@ int blowfish_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symme
 int blowfish_test(void);
 void blowfish_done(symmetric_key *skey);
 int blowfish_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor blowfish_desc;
+const struct ltc_cipher_descriptor blowfish_desc;
 #endif
 
 #ifdef LTC_RC5
@@ -643,7 +643,7 @@ int rc5_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric_
 int rc5_test(void);
 void rc5_done(symmetric_key *skey);
 int rc5_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor rc5_desc;
+const struct ltc_cipher_descriptor rc5_desc;
 #endif
 
 #ifdef LTC_RC6
@@ -653,7 +653,7 @@ int rc6_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric_
 int rc6_test(void);
 void rc6_done(symmetric_key *skey);
 int rc6_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor rc6_desc;
+const struct ltc_cipher_descriptor rc6_desc;
 #endif
 
 #ifdef LTC_RC2
@@ -664,7 +664,7 @@ int rc2_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric_
 int rc2_test(void);
 void rc2_done(symmetric_key *skey);
 int rc2_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor rc2_desc;
+const struct ltc_cipher_descriptor rc2_desc;
 #endif
 
 #ifdef LTC_SAFERP
@@ -674,7 +674,7 @@ int saferp_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetr
 int saferp_test(void);
 void saferp_done(symmetric_key *skey);
 int saferp_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor saferp_desc;
+const struct ltc_cipher_descriptor saferp_desc;
 #endif
 
 #ifdef LTC_SAFER
@@ -690,7 +690,7 @@ int safer_sk128_test(void);
 void safer_done(symmetric_key *skey);
 int safer_64_keysize(int *keysize);
 int safer_128_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor safer_k64_desc, safer_k128_desc, safer_sk64_desc, safer_sk128_desc;
+const struct ltc_cipher_descriptor safer_k64_desc, safer_k128_desc, safer_sk64_desc, safer_sk128_desc;
 #endif
 
 #ifdef LTC_RIJNDAEL
@@ -717,8 +717,8 @@ int rijndael_enc_setup(const unsigned char *key, int keylen, int num_rounds, sym
 int rijndael_enc_ecb_encrypt(const unsigned char *pt, unsigned char *ct, const symmetric_key *skey);
 void rijndael_enc_done(symmetric_key *skey);
 int rijndael_enc_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor rijndael_desc, aes_desc;
-extern const struct ltc_cipher_descriptor rijndael_enc_desc, aes_enc_desc;
+const struct ltc_cipher_descriptor rijndael_desc, aes_desc;
+const struct ltc_cipher_descriptor rijndael_enc_desc, aes_enc_desc;
 #endif
 
 #ifdef LTC_XTEA
@@ -728,7 +728,7 @@ int xtea_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric
 int xtea_test(void);
 void xtea_done(symmetric_key *skey);
 int xtea_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor xtea_desc;
+const struct ltc_cipher_descriptor xtea_desc;
 #endif
 
 #ifdef LTC_TWOFISH
@@ -738,7 +738,7 @@ int twofish_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmet
 int twofish_test(void);
 void twofish_done(symmetric_key *skey);
 int twofish_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor twofish_desc;
+const struct ltc_cipher_descriptor twofish_desc;
 #endif
 
 #ifdef LTC_DES
@@ -754,7 +754,7 @@ int des3_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric
 int des3_test(void);
 void des3_done(symmetric_key *skey);
 int des3_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor des_desc, des3_desc;
+const struct ltc_cipher_descriptor des_desc, des3_desc;
 #endif
 
 #ifdef LTC_CAST5
@@ -764,7 +764,7 @@ int cast5_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetri
 int cast5_test(void);
 void cast5_done(symmetric_key *skey);
 int cast5_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor cast5_desc;
+const struct ltc_cipher_descriptor cast5_desc;
 #endif
 
 #ifdef LTC_NOEKEON
@@ -774,7 +774,7 @@ int noekeon_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmet
 int noekeon_test(void);
 void noekeon_done(symmetric_key *skey);
 int noekeon_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor noekeon_desc;
+const struct ltc_cipher_descriptor noekeon_desc;
 #endif
 
 #ifdef LTC_SKIPJACK
@@ -784,7 +784,7 @@ int skipjack_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symme
 int skipjack_test(void);
 void skipjack_done(symmetric_key *skey);
 int skipjack_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor skipjack_desc;
+const struct ltc_cipher_descriptor skipjack_desc;
 #endif
 
 #ifdef LTC_KHAZAD
@@ -794,7 +794,7 @@ int khazad_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetr
 int khazad_test(void);
 void khazad_done(symmetric_key *skey);
 int khazad_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor khazad_desc;
+const struct ltc_cipher_descriptor khazad_desc;
 #endif
 
 #ifdef LTC_ANUBIS
@@ -804,7 +804,7 @@ int anubis_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetr
 int anubis_test(void);
 void anubis_done(symmetric_key *skey);
 int anubis_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor anubis_desc;
+const struct ltc_cipher_descriptor anubis_desc;
 #endif
 
 #ifdef LTC_KSEED
@@ -814,7 +814,7 @@ int kseed_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetri
 int kseed_test(void);
 void kseed_done(symmetric_key *skey);
 int kseed_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor kseed_desc;
+const struct ltc_cipher_descriptor kseed_desc;
 #endif
 
 #ifdef LTC_KASUMI
@@ -824,7 +824,7 @@ int kasumi_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetr
 int kasumi_test(void);
 void kasumi_done(symmetric_key *skey);
 int kasumi_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor kasumi_desc;
+const struct ltc_cipher_descriptor kasumi_desc;
 #endif
 
 
@@ -835,7 +835,7 @@ int multi2_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetr
 int multi2_test(void);
 void multi2_done(symmetric_key *skey);
 int multi2_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor multi2_desc;
+const struct ltc_cipher_descriptor multi2_desc;
 #endif
 
 #ifdef LTC_CAMELLIA
@@ -845,7 +845,7 @@ int camellia_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symme
 int camellia_test(void);
 void camellia_done(symmetric_key *skey);
 int camellia_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor camellia_desc;
+const struct ltc_cipher_descriptor camellia_desc;
 #endif
 
 #ifdef LTC_IDEA
@@ -855,7 +855,7 @@ int idea_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric
 int idea_test(void);
 void idea_done(symmetric_key *skey);
 int idea_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor idea_desc;
+const struct ltc_cipher_descriptor idea_desc;
 #endif
 
 #ifdef LTC_SERPENT
@@ -865,7 +865,7 @@ int serpent_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmet
 int serpent_test(void);
 void serpent_done(symmetric_key *skey);
 int serpent_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor serpent_desc;
+const struct ltc_cipher_descriptor serpent_desc;
 #endif
 
 #ifdef LTC_TEA
@@ -875,7 +875,7 @@ int tea_ecb_decrypt(const unsigned char *ct, unsigned char *pt, const symmetric_
 int tea_test(void);
 void tea_done(symmetric_key *skey);
 int tea_keysize(int *keysize);
-extern const struct ltc_cipher_descriptor tea_desc;
+const struct ltc_cipher_descriptor tea_desc;
 #endif
 
 #ifdef LTC_ECB_MODE
