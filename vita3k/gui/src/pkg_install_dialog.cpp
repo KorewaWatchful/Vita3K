@@ -18,10 +18,10 @@
 #include "private.h"
 
 #include <gui/functions.h>
-#include <misc/cpp/imgui_stdlib.h>
 #include <host/functions.h>
 #include <host/pkg.h>
 #include <host/sce_types.h>
+#include <misc/cpp/imgui_stdlib.h>
 #include <util/log.h>
 
 #include <nfd.h>
@@ -29,23 +29,20 @@
 namespace gui {
 
 void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
-      
-	nfdresult_t result = NFD_CANCEL;
+    nfdresult_t result = NFD_CANCEL;
 
     static nfdchar_t *pkg_path;
     static bool draw_file_dialog = true;
     bool is_entering_zrif = true;
     static bool delete_pkg_file = false;
     static const auto BUTTON_SIZE = ImVec2(60.f, 0.f);
+    bool pkg_success = false;
 
-    
     if (draw_file_dialog) {
         result = NFD_OpenDialog("pkg", nullptr, &pkg_path);
         draw_file_dialog = false;
         if (result == NFD_OKAY) {
-            if (is_entering_zrif == true) {
-				 ImGui::OpenPopup("Enter zRIF");
-            }
+            ImGui::OpenPopup("Enter zRIF");
         } else if (result == NFD_CANCEL) {
             gui.file_menu.pkg_install_dialog = false;
             draw_file_dialog = true;
@@ -77,39 +74,48 @@ void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
     }
 
     if (ImGui::BeginPopupModal("PKG Installation failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextColored(GUI_COLOR_TEXT, "Failed to install the pkg.");
+        ImGui::TextColored(GUI_COLOR_TEXT, "Failed to install the pkg. \n Please check log for more details.");
+		
+        if (ImGui::Button("OK", BUTTON_SIZE)) {
+            gui.file_menu.pkg_install_dialog = false;
+            draw_file_dialog = true;
+        }
         ImGui::EndPopup();
     }
 
-	if (ImGui::BeginPopupModal("Enter zRIF", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    if (ImGui::BeginPopupModal("Enter zRIF", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::InputTextWithHint("##enter_zrif", "Please input your zRIF here", &host.zRIF);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Ctrl(Cmd) + C for copy, Ctrl(Cmd) + V to paste.");
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        if (ImGui::IsItemHovered()) 
-            ImGui::SetTooltip("Ctrl(Cmd) + C for copy, Ctrl(Cmd) + V to paste.");
-		if (ImGui::Button("Confirm") && !host.zRIF.empty()) {
-			is_entering_zrif = false;
-			if (install_pkg(pkg_path, host.pref_path, host)) {
-		    ImGui::OpenPopup("PKG Installation success");
-		    } else {
-		    ImGui::OpenPopup("PKG Installation failed");
-				if (ImGui::BeginPopupModal("PKG Installation failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::TextColored(GUI_COLOR_TEXT, "Failed to install the pkg.");
-				ImGui::EndPopup();
-			    }
-			}
-            refresh_game_list(gui, host);
-			gui.file_menu.pkg_install_dialog = false;
-			draw_file_dialog = true;
-		}
-		if (ImGui::Button("Cancel")) {
-			is_entering_zrif = false;
-			ImGui::CloseCurrentPopup();
-			gui.file_menu.pkg_install_dialog = false;
-			draw_file_dialog = true;
-		}
+        if (ImGui::Button("Confirm") && !host.zRIF.empty()) {
+            if (install_pkg(pkg_path, host.pref_path, host)) {
+                pkg_success = true;
+				is_entering_zrif = false;
+            } else {
+                pkg_success = false;
+                is_entering_zrif = false;
+            }
+        }
+        if (ImGui::Button("Cancel")) {
+            is_entering_zrif = false;
+            ImGui::CloseCurrentPopup();
+            gui.file_menu.pkg_install_dialog = false;
+            draw_file_dialog = true;
+        }
         ImGui::EndPopup();
+    }
+    if (is_entering_zrif == false) {
+		if (pkg_success) {
+		    ImGui::OpenPopup("PKG Installation success");
+			refresh_game_list(gui, host);
+		}
+		else {
+			ImGui::OpenPopup("PKG Installation failed");
+			refresh_game_list(gui, host);
+		}
 	}
 }
 } // namespace gui

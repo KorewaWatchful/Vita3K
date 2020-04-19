@@ -16,6 +16,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 #include <crypto/aes.h>
+#include <app/functions.h>
 #include <host/functions.h>
 #include <host/pkg.h>
 #include <host/sfo.h>
@@ -185,7 +186,9 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
         root_path = device::construct_emulated_path(VitaIoDevice::ux0, "addcont/" + title_id, pref_path);
         break;
     case PkgType::PKG_TYPE_VITA_PATCH:
-        root_path = device::construct_emulated_path(VitaIoDevice::ux0, "patch/" + title_id, pref_path);
+        app::error_dialog("Sorry, but game updates/patches are not supported at this time.", nullptr);
+        return false;
+        //root_path = device::construct_emulated_path(VitaIoDevice::ux0, "patch/" + title_id, pref_path);
     }
 
     for (uint32_t i = 0; i < byte_swap(pkg_header.file_count); i++) {
@@ -237,9 +240,10 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
     host.title_id_dst = root_path.string() + "_dec";
     host.f00d_enc_type = F00DEncryptorTypes::native;
     host.f00d_arg = std::string();
- 
-	execute(host);
-
+    
+	if (execute(host) < 0) {
+        return false;
+    } else {
 	fs::remove_all(fs::path(host.title_id_src));
     fs::rename(fs::path(host.title_id_dst), fs::path(host.title_id_src));
 
@@ -261,13 +265,13 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
     fs::rename(host.title_id_src + "/eboot.bin" + "elf", host.title_id_src + "/eboot.bin");
     make_fself(host.title_id_src + "/eboot.bin", host.title_id_src + "/eboot.bin" + "fself");
     fs::rename(host.title_id_src + "/eboot.bin" + "fself", host.title_id_src + "/eboot.bin");
-
+    }
 
 	host.title_id_src.clear();
     host.title_id_dst.clear();
     host.zRIF.clear();
     host.f00d_arg.clear();
     host.klicensee.clear();
-     
+
     return true;
 }
