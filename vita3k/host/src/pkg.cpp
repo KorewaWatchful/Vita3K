@@ -15,18 +15,18 @@
 // with this program; if not, write to the Free Software Foundation, Inc.,
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-#include <crypto/aes.h>
+#include <PsvPfsParserConfig.h>
 #include <app/functions.h>
+#include <crypto/aes.h>
 #include <host/functions.h>
 #include <host/pkg.h>
-#include <host/sfo.h>
 #include <host/sce_types.h>
+#include <host/sfo.h>
+#include <host/state.h>
 #include <io/device.h>
 #include <util/bytes.h>
-#include <host/state.h>
 #include <util/log.h>
-#include <../psvpfsparser/PsvPfsParserConfig.h>
-#include <../libzRIF/include/zRIF/licdec.h>
+#include <zRIF/licdec.h>
 
 #include <fstream>
 
@@ -166,11 +166,14 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
     SfoFile sfo_file;
     std::string title_id;
     std::string category;
+    std::string content_id;
     infile.seekg(sfo_offset);
     infile.read((char *)&sfo_buffer[0], sfo_size);
     sfo::load(sfo_file, sfo_buffer);
     sfo::get_data_by_key(title_id, sfo_file, "TITLE_ID");
     sfo::get_data_by_key(category, sfo_file, "CATEGORY");
+    sfo::get_data_by_key(content_id, sfo_file, "CONTENT_ID");
+    content_id = content_id.substr(20);
 
     if (type == PkgType::PKG_TYPE_VITA_APP && strcmp(category.c_str(), "gp") == 0) {
         type = PkgType::PKG_TYPE_VITA_PATCH;
@@ -183,7 +186,7 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
         root_path = device::construct_emulated_path(VitaIoDevice::ux0, "app/" + title_id, pref_path);
         break;
     case PkgType::PKG_TYPE_VITA_DLC:
-        root_path = device::construct_emulated_path(VitaIoDevice::ux0, "addcont/" + title_id, pref_path);
+        root_path = device::construct_emulated_path(VitaIoDevice::ux0, "addcont/" + title_id + content_id, pref_path);
         break;
     case PkgType::PKG_TYPE_VITA_PATCH:
         app::error_dialog("Sorry, but game updates/patches are not supported at this time.", nullptr);
@@ -235,39 +238,54 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
     }
     infile.close();
 
-	
-	host.title_id_src = root_path.string();
-    host.title_id_dst = root_path.string() + "_dec";
-    host.f00d_enc_type = F00DEncryptorTypes::native;
-    host.f00d_arg = std::string();
-    
-	if (execute(host) < 0) {
-        return false;
-    } else {
-	fs::remove_all(fs::path(host.title_id_src));
-    fs::rename(fs::path(host.title_id_dst), fs::path(host.title_id_src));
+    switch (type) {
+    case PkgType::PKG_TYPE_VITA_APP:
+        host.title_id_src = root_path.string();
+        host.title_id_dst = root_path.string() + "_dec";
+        host.f00d_enc_type = F00DEncryptorTypes::native;
+        host.f00d_arg = std::string();
 
-	KeyStore SCE_KEYS;
-    register_keys(SCE_KEYS);
-    unsigned char temp_klicensee[0x10] = { 0 };
-    std::shared_ptr<SceNpDrmLicense> slic = decode_license_np(host.zRIF);
-    memcpy(temp_klicensee, slic->key, 0x10);
+        if (execute(host) < 0) {
+            return false;
+        } else {
+            fs::remove_all(fs::path(host.title_id_src));
+            fs::rename(fs::path(host.title_id_dst), fs::path(host.title_id_src));
 
-	for (const auto &file : fs::directory_iterator(host.title_id_src + "/sce_module/")) 
-	{
-        self2elf(file.path().string(), file.path().string() + "elf", SCE_KEYS, temp_klicensee);
-        fs::rename(file.path().string() + "elf", file.path().string());
-        make_fself(file.path().string(), file.path().string() + "fself");
-        fs::rename(file.path().string() + "fself", file.path().string());
-	}
-	
-	self2elf(host.title_id_src + "/eboot.bin", host.title_id_src + "/eboot.bin" + "elf", SCE_KEYS, temp_klicensee);
-    fs::rename(host.title_id_src + "/eboot.bin" + "elf", host.title_id_src + "/eboot.bin");
-    make_fself(host.title_id_src + "/eboot.bin", host.title_id_src + "/eboot.bin" + "fself");
-    fs::rename(host.title_id_src + "/eboot.bin" + "fself", host.title_id_src + "/eboot.bin");
+            KeyStore SCE_KEYS;
+            register_keys(SCE_KEYS);
+            unsigned char temp_klicensee[0x10] = { 0 };
+            std::shared_ptr<SceNpDrmLicense> slic = decode_license_np(host.zRIF);
+            memcpy(temp_klicensee, slic->key, 0x10);
+
+            for (const auto &file : fs::directory_iterator(host.title_id_src + "/sce_module/")) {
+                self2elf(file.path().string(), file.path().string() + "elf", SCE_KEYS, temp_klicensee);
+                fs::rename(file.path().string() + "elf", file.path().string());
+                make_fself(file.path().string(), file.path().string() + "fself");
+                fs::rename(file.path().string() + "fself", file.path().string());
+            }
+
+            self2elf(host.title_id_src + "/eboot.bin", host.title_id_src + "/eboot.bin" + "elf", SCE_KEYS, temp_klicensee);
+            fs::rename(host.title_id_src + "/eboot.bin" + "elf", host.title_id_src + "/eboot.bin");
+            make_fself(host.title_id_src + "/eboot.bin", host.title_id_src + "/eboot.bin" + "fself");
+            fs::rename(host.title_id_src + "/eboot.bin" + "fself", host.title_id_src + "/eboot.bin");
+        }
+
+        break;
+    case PkgType::PKG_TYPE_VITA_DLC:
+        host.title_id_src = root_path.string();
+        host.title_id_dst = root_path.string() + "_dec";
+        host.f00d_enc_type = F00DEncryptorTypes::native;
+        host.f00d_arg = std::string();
+
+        if (execute(host) < 0) {
+            return false;
+        } else {
+            return true;
+        }
+        break;
     }
 
-	host.title_id_src.clear();
+    host.title_id_src.clear();
     host.title_id_dst.clear();
     host.zRIF.clear();
     host.f00d_arg.clear();
