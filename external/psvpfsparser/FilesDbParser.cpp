@@ -534,7 +534,7 @@ bool FilesDbParser::constructFileMatrix(std::vector<sce_ng_pfs_block_t>& blocks,
             else
             {
                //empty files should be allowed!
-               m_output << "[EMPTY] File " << fileName << " index " << child << " of type " << std::hex << block.m_infos[i].header.type << std::endl;
+               m_output << "[EMPTY] File " << fileName << " index " << child << " of type " << std::hex << static_cast<uint16_t>(block.m_infos[i].header.type) << std::endl;
             }
          }
          else

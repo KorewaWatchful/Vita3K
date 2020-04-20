@@ -9,5 +9,8 @@ if (WIN32)
 elseif (UNIX)
     target_link_libraries(libtomcrypt INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/libtomcrypt.a")
+elseif (APPLE)
+    target_link_libraries(libtomcrypt INTERFACE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/tomcrypt.a")
 endif()
 

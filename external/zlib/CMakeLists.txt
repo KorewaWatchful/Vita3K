@@ -9,4 +9,7 @@ if (WIN32)
 elseif (UNIX) 
     target_link_libraries(zlib INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/libz.a")
+elseif (APPLE)
+    target_link_libraries(zlib INTERFACE 
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/libmacz.a")
 endif()
