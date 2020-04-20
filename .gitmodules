@@ -84,3 +84,18 @@
 [submodule "external/ffmpeg"]
 	path = external/ffmpeg
 	url = https://github.com/Vita3K/ffmpeg-core.git
+[submodule "external/libb64"]
+	path = external/libb64
+	url = https://github.com/korewawatchful/libb64.git
+[submodule "external/libzRIF"]
+	path = external/libzRIF
+	url = https://github.com/korewawatchful/libzrif.git
+[submodule "external/psvpfsparser"]
+	path = external/psvpfsparser
+	url = https://github.com/korewawatchful/psvpfsparser.git
+[submodule "external/zlib"]
+	path = external/zlib
+	url = https://github.com/korewawatchful/zlib.git
+[submodule "external/libtomcrypt"]
+	path = external/libtomcrypt
+	url = https://github.com/korewawatchful/libtomcrypt.git
