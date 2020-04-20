@@ -6,10 +6,10 @@ target_include_directories(zlib INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}")
 if (WIN32)
     target_link_libraries(zlib INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/zlibstaticd.lib")
-elseif (UNIX) 
-    target_link_libraries(zlib INTERFACE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/libz.a")
 elseif (APPLE)
     target_link_libraries(zlib INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/libmacz.a")
+else ()
+    target_link_libraries(zlib INTERFACE
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/Debug/libz.a")
 endif()

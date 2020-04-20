@@ -6,11 +6,11 @@ target_include_directories(libtomcrypt INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/bu
 if (WIN32)
     target_link_libraries(libtomcrypt INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/tomcrypt.lib")
-elseif (UNIX)
-    target_link_libraries(libtomcrypt INTERFACE 
-        "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/libtomcrypt.a")
 elseif (APPLE)
     target_link_libraries(libtomcrypt INTERFACE 
         "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/tomcrypt.a")
+else ()
+    target_link_libraries(libtomcrypt INTERFACE
+        "${CMAKE_CURRENT_SOURCE_DIR}/build/lib/libtomcrypt.a")
 endif()
 
