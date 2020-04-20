@@ -45,10 +45,12 @@ void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
             ImGui::OpenPopup("Enter zRIF");
         } else if (result == NFD_CANCEL) {
             gui.file_menu.pkg_install_dialog = false;
+            is_entering_zrif = true;
             draw_file_dialog = true;
         } else {
             LOG_ERROR("Error initializing file dialog: {}", NFD_GetError());
             gui.file_menu.pkg_install_dialog = false;
+            is_entering_zrif = true;
             draw_file_dialog = true;
         }
     }
@@ -67,6 +69,7 @@ void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
                 delete_pkg_file = false;
             }
             pkg_path = nullptr;
+            is_entering_zrif = true;
             gui.file_menu.pkg_install_dialog = false;
             draw_file_dialog = true;
         }
@@ -74,9 +77,9 @@ void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
     }
 
     if (ImGui::BeginPopupModal("PKG Installation failed", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextColored(GUI_COLOR_TEXT, "Failed to install the pkg. \n Please check log for more details.");
-		
+        ImGui::TextColored(GUI_COLOR_TEXT, "Failed to install the pkg. \nPlease check log for more details.");
         if (ImGui::Button("OK", BUTTON_SIZE)) {
+            is_entering_zrif = true;
             gui.file_menu.pkg_install_dialog = false;
             draw_file_dialog = true;
         }
@@ -100,7 +103,7 @@ void draw_pkg_install_dialog(GuiState &gui, HostState &host) {
             }
         }
         if (ImGui::Button("Cancel")) {
-            is_entering_zrif = false;
+            is_entering_zrif = true;
             ImGui::CloseCurrentPopup();
             gui.file_menu.pkg_install_dialog = false;
             draw_file_dialog = true;

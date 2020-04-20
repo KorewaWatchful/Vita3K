@@ -280,6 +280,8 @@ bool install_pkg(const std::string &pkg, const std::string &pref_path, HostState
         if (execute(host) < 0) {
             return false;
         } else {
+            fs::remove_all(fs::path(host.title_id_src));
+            fs::rename(fs::path(host.title_id_dst), fs::path(host.title_id_src));
             return true;
         }
         break;
