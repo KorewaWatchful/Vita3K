@@ -375,7 +375,7 @@ COMMAND_SET_STATE(vertex_stream) {
         const bool is_from_us = addresses.find(reinterpret_cast<uintptr_t>(stream_data)) != addresses.end();
         if (!is_from_us)
             LOG_ERROR("WTF");
-        //addresses.erase(reinterpret_cast<uintptr_t>(stream_data));
+        addresses.erase(reinterpret_cast<uintptr_t>(stream_data));
         delete[] stream_data;
         break;
     }

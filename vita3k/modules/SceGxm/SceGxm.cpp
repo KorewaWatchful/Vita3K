@@ -575,8 +575,7 @@ EXPORT(int, sceGxmDraw, SceGxmContext *context, SceGxmPrimitiveType primType, Sc
             std::uint8_t *a_copy = new std::uint8_t[data_length];
             std::copy(data, data + data_length, a_copy);
 
-			const auto addr = new uint8_t[data_length];
-            addresses.insert(reinterpret_cast<uintptr_t>(addr));
+            addresses.insert(reinterpret_cast<uintptr_t>(a_copy));
 
             renderer::set_vertex_stream(*host.renderer, context->renderer.get(), &context->state, stream_index,
                 data_length, a_copy);
@@ -685,9 +684,8 @@ EXPORT(int, sceGxmDrawPrecomputed, SceGxmContext *context, SceGxmPrecomputedDraw
 
             std::uint8_t *a_copy = new std::uint8_t[data_length];
             std::copy(data, data + data_length, a_copy);
-			
-			const auto addr = new uint8_t[data_length];
-            addresses.insert(reinterpret_cast<uintptr_t>(addr));
+
+            addresses.insert(reinterpret_cast<uintptr_t>(a_copy));
 
             renderer::set_vertex_stream(*host.renderer, context->renderer.get(), &context->state, stream_index,
                 data_length, a_copy);
