@@ -106,7 +106,7 @@ COMMAND_SET_STATE(uniform_buffer) {
     switch (renderer.current_backend) {
     case Backend::OpenGL: {
         gl::set_uniform_buffer(*reinterpret_cast<gl::GLContext *>(render_context), is_vertex, block_num, size, data, config.log_active_shaders);
-        delete[size] data;
+        delete[] data;
 
         break;
     }
@@ -366,12 +366,17 @@ COMMAND_SET_STATE(vertex_stream) {
     const std::size_t stream_index = helper.pop<std::size_t>();
     const std::size_t stream_data_length = helper.pop<std::size_t>();
     const void *stream_data = helper.pop<const void *>();
+	
 
     switch (renderer.current_backend) {
     case Backend::OpenGL: {
         gl::upload_vertex_stream(*reinterpret_cast<gl::GLContext *>(render_context), stream_index, stream_data_length,
             stream_data);
-        delete[stream_data_length] stream_data;
+        const bool is_from_us = addresses.find(reinterpret_cast<uintptr_t>(stream_data)) != addresses.end();
+        if (!is_from_us)
+            LOG_ERROR("WTF");
+        //addresses.erase(reinterpret_cast<uintptr_t>(stream_data));
+        delete[] stream_data;
         break;
     }
 

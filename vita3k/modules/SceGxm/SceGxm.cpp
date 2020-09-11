@@ -30,6 +30,8 @@
 #include <util/lock_and_find.h>
 #include <util/log.h>
 
+std::set<uintptr_t> addresses;
+
 struct SceGxmContext {
     GxmContextState state;
     GXMRecordState record;
@@ -573,6 +575,9 @@ EXPORT(int, sceGxmDraw, SceGxmContext *context, SceGxmPrimitiveType primType, Sc
             std::uint8_t *a_copy = new std::uint8_t[data_length];
             std::copy(data, data + data_length, a_copy);
 
+			const auto addr = new uint8_t[data_length];
+            addresses.insert(reinterpret_cast<uintptr_t>(addr));
+
             renderer::set_vertex_stream(*host.renderer, context->renderer.get(), &context->state, stream_index,
                 data_length, a_copy);
         }
@@ -680,6 +685,9 @@ EXPORT(int, sceGxmDrawPrecomputed, SceGxmContext *context, SceGxmPrecomputedDraw
 
             std::uint8_t *a_copy = new std::uint8_t[data_length];
             std::copy(data, data + data_length, a_copy);
+			
+			const auto addr = new uint8_t[data_length];
+            addresses.insert(reinterpret_cast<uintptr_t>(addr));
 
             renderer::set_vertex_stream(*host.renderer, context->renderer.get(), &context->state, stream_index,
                 data_length, a_copy);

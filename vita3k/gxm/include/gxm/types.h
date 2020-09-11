@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <set>
 
 #define SCE_GXM_DEFAULT_UNIFORM_BUFFER_CONTAINER_INDEX 0xE
 #define SCE_GXM_MAX_VERTEX_STREAMS 4
@@ -18,6 +19,8 @@
 #define SCE_GXM_TILE_SHIFTY 5U
 #define SCE_GXM_TILE_SIZEX (1U << SCE_GXM_TILE_SHIFTX)
 #define SCE_GXM_TILE_SIZEY (1U << SCE_GXM_TILE_SHIFTY)
+
+extern std::set<uintptr_t> addresses;
 
 namespace renderer {
 struct FragmentProgram;
