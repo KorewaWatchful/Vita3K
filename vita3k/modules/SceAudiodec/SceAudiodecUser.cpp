@@ -47,7 +47,7 @@ struct SceAudiodecInfoMp3 {
 struct SceAudiodecInfoAac {
     uint32_t is_adts;
     uint32_t channels;
-    uint32_t sample_ate;
+    uint32_t sample_rate;
     uint32_t is_sbr;
 };
 
@@ -80,6 +80,9 @@ struct SceAudiodecCtrl {
     uint32_t word_length;
     Ptr<SceAudiodecInfo> info;
 };
+
+constexpr size_t NORMAL_ES_BUFFER_SIZE = KB(20);
+constexpr size_t NORMAL_PCM_BUFFER_SIZE = KB(32);
 
 EXPORT(int, sceAudiodecClearContext) {
     return UNIMPLEMENTED();
@@ -126,6 +129,19 @@ EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec co
             return RET_ERROR(SCE_AUDIODEC_MP3_ERROR_INVALID_MPEG_VERSION);
         }
     }
+    case SCE_AUDIODEC_TYPE_AAC: {
+        SceAudiodecInfoAac &info = ctrl->info.get(host.mem)->aac;
+        DecoderPtr decoder = std::make_shared<AacDecoderState>(info.sample_rate, info.channels);
+        host.kernel.decoders[handle] = decoder;
+
+        ctrl->es_size_max = NORMAL_ES_BUFFER_SIZE;
+        ctrl->pcm_size_max = NORMAL_PCM_BUFFER_SIZE;
+
+        LOG_DEBUG("ADTS HEADER STATUS : {}", info.is_adts);
+        LOG_DEBUG("SDR STATUS: {}", info.is_sbr);
+
+        return 0;
+    }
     default: {
         LOG_ERROR("Unimplemented audio decoder {}.", codec);
         return -1;
@@ -133,8 +149,65 @@ EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec co
     }
 }
 
-EXPORT(int, sceAudiodecCreateDecoderExternal) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAudiodecCreateDecoderExternal, SceAudiodecCtrl *ctrl, SceAudiodecCodec codec, SceUIntVAddr *context, SceUInt32 context_size) {
+    std::lock_guard<std::mutex> lock(host.kernel.mutex);
+
+    SceUID handle = host.kernel.get_next_uid();
+    ctrl->handle = handle;
+
+    switch (codec) {
+    case SCE_AUDIODEC_TYPE_AT9: {
+        SceAudiodecInfoAt9 &info = ctrl->info.get(host.mem)->at9;
+        DecoderPtr decoder = std::make_shared<Atrac9DecoderState>(info.config_data);
+        host.kernel.decoders[handle] = decoder;
+
+        ctrl->es_size_max = decoder->get(DecoderQuery::AT9_SUPERFRAME_SIZE);
+        ctrl->pcm_size_max = decoder->get(DecoderQuery::AT9_SAMPLE_PER_SUPERFRAME)
+                             * decoder->get(DecoderQuery::CHANNELS) * sizeof(int16_t);
+        info.channels = decoder->get(DecoderQuery::CHANNELS);
+        info.bit_rate = decoder->get(DecoderQuery::BIT_RATE);
+        info.sample_rate = decoder->get(DecoderQuery::SAMPLE_RATE);
+        info.super_frame_size = decoder->get(DecoderQuery::AT9_SUPERFRAME_SIZE);
+        info.frames_in_super_frame = decoder->get(DecoderQuery::AT9_FRAMES_IN_SUPERFRAME);
+        return 0;
+    }
+    case SCE_AUDIODEC_TYPE_MP3: {
+        SceAudiodecInfoMp3 &info = ctrl->info.get(host.mem)->mp3;
+        DecoderPtr decoder = std::make_shared<Mp3DecoderState>(info.channels);
+        host.kernel.decoders[handle] = decoder;
+
+        ctrl->es_size_max = 1441;
+
+        switch (info.version) {
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_1:
+            ctrl->pcm_size_max = 1152 * info.channels * sizeof(int16_t);
+            return 0;
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_2:
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_2_5:
+            ctrl->pcm_size_max = 576 * info.channels * sizeof(int16_t);
+            return 0;
+        default:
+            return RET_ERROR(SCE_AUDIODEC_MP3_ERROR_INVALID_MPEG_VERSION);
+        }
+    }
+    case SCE_AUDIODEC_TYPE_AAC: {
+        SceAudiodecInfoAac &info = ctrl->info.get(host.mem)->aac;
+        DecoderPtr decoder = std::make_shared<AacDecoderState>(info.sample_rate, info.channels);
+        host.kernel.decoders[handle] = decoder;
+
+        ctrl->es_size_max = NORMAL_ES_BUFFER_SIZE;
+        ctrl->pcm_size_max = NORMAL_PCM_BUFFER_SIZE;
+
+            LOG_DEBUG("ADTS HEADER STATUS : {}", info.is_adts);
+            LOG_DEBUG("SDR STATUS: {}", info.is_sbr);
+
+        return 0;
+    }
+    default: {
+            LOG_ERROR("Unimplemented audio decoder {}.", codec);
+        return -1;
+    }
+    }
 }
 
 EXPORT(int, sceAudiodecCreateDecoderResident) {
@@ -174,7 +247,7 @@ EXPORT(int, sceAudiodecDeleteDecoder, SceAudiodecCtrl *ctrl) {
     return 0;
 }
 
-EXPORT(int, sceAudiodecDeleteDecoderExternal) {
+EXPORT(int, sceAudiodecDeleteDecoderExternal, SceAudiodecCtrl *ctrl, SceUIntVAddr *context) {
     return UNIMPLEMENTED();
 }
 
