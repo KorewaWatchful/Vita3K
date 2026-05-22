@@ -1020,6 +1020,14 @@ void VKState::cleanup() {
     texture_cache.cleanup();
 
     for (auto &[addr, mapping] : mapped_memories) {
+        if (mem && (mapping_method == MappingMethod::DoubleBuffer || mapping_method == MappingMethod::PageTable
+#ifdef __ANDROID__
+            || mapping_method == MappingMethod::NativeBuffer
+#endif
+            )) {
+            remove_external_mapping(*mem, addr, mapping.size);
+        }
+
         if (auto *ext = std::get_if<ExternalBuffer>(&mapping.buffer_impl)) {
             device.destroyBuffer(mapping.buffer);
             device.freeMemory(ext->memory);
@@ -1035,6 +1043,7 @@ void VKState::cleanup() {
     }
     mapped_memories.clear();
     buffer_trapping.trapped_buffers.clear();
+    mem = nullptr;
 
     default_image.destroy();
     default_buffer.destroy();
@@ -1525,14 +1534,14 @@ void VKState::unmap_memory(MemState &mem, Ptr<void> address) {
         break;
 
     case MappingMethod::DoubleBuffer:
-        remove_external_mapping(mem, address.cast<uint8_t>().get(mem), ite->second.size);
+        remove_external_mapping(mem, address.address(), ite->second.size);
         // remove all the trapping related to these locations
         buffer_trapping.remove_range(address.address(), address.address() + ite->second.size);
         break;
 
 #ifdef __ANDROID__
     case MappingMethod::NativeBuffer: {
-        remove_external_mapping(mem, address.cast<uint8_t>().get(mem), ite->second.size);
+        remove_external_mapping(mem, address.address(), ite->second.size);
         device.destroyBuffer(ite->second.buffer);
         ExternalBuffer &buffer = std::get<ExternalBuffer>(ite->second.buffer_impl);
         device.freeMemory(buffer.memory);
@@ -1547,7 +1556,7 @@ void VKState::unmap_memory(MemState &mem, Ptr<void> address) {
 #endif
 
     case MappingMethod::PageTable:
-        remove_external_mapping(mem, address.cast<uint8_t>().get(mem), ite->second.size);
+        remove_external_mapping(mem, address.address(), ite->second.size);
         break;
 
     default:
