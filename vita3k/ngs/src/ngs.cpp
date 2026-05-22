@@ -326,8 +326,8 @@ void Voice::invoke_callback(KernelState &kernel, const MemState &mem, const SceU
     const Address callback_info_addr = stack_alloc(*thread->cpu, sizeof(SceNgsCallbackInfo));
 
     SceNgsCallbackInfo *info = Ptr<SceNgsCallbackInfo>(callback_info_addr).get(mem);
-    info->rack_handle = Ptr<void>(rack, mem);
-    info->voice_handle = Ptr<void>(this, mem);
+    info->rack_handle = guest_subptr(rack->memspace, rack->memspace.get(mem), rack).cast<void>();
+    info->voice_handle = guest_subptr(rack->memspace, rack->memspace.get(mem), this).cast<void>();
     info->module_id = module_id;
     info->callback_reason = reason1;
     info->callback_reason_2 = reason2;
