@@ -49,6 +49,19 @@ struct VKState;
 struct VKContext;
 struct CompileRequest;
 
+struct VertexStreamPaddingPatch {
+    uint32_t source_copy_end = 0;
+    uint32_t padding_size = 0;
+};
+
+struct VertexStreamLayoutInfo {
+    uint32_t original_stride = 0;
+    uint32_t translated_stride = 0;
+    bool needs_repack = false;
+    std::map<uint16_t, uint32_t> translated_offsets;
+    std::vector<VertexStreamPaddingPatch> padding_patches;
+};
+
 using PipelineCompileQueue = moodycamel::BlockingConcurrentQueue<CompileRequest *>;
 
 class PipelineCache {
@@ -133,6 +146,8 @@ public:
     vk::Pipeline retrieve_pipeline(VKContext &context, SceGxmPrimitiveType &type, bool consider_for_async, MemState &mem);
 
     vk::ShaderModule precompile_shader(const Sha256Hash &hash, bool search_first = true);
+
+    VertexStreamLayoutInfo get_vertex_stream_layout(const SceGxmVertexProgram &vertex_program, uint32_t stream_index) const;
 
     void set_async_compilation(bool enable);
 };

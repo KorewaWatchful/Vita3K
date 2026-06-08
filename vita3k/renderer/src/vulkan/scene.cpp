@@ -22,10 +22,48 @@
 
 #include <config/state.h>
 #include <spdlog/fmt/bin_to_hex.h>
-
 #include <util/log.h>
 
 namespace renderer::vulkan {
+
+static std::vector<uint8_t> repack_vertex_stream(const uint8_t *stream, uint32_t stream_size, const VertexStreamLayoutInfo &layout) {
+    if (!layout.needs_repack || layout.original_stride == 0 || layout.translated_stride == layout.original_stride)
+        return {};
+
+    const uint32_t vertex_count = (stream_size + layout.original_stride - 1) / layout.original_stride;
+    std::vector<uint8_t> repacked(vertex_count * layout.translated_stride, 0);
+
+    for (uint32_t vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
+        const uint32_t src_base = vertex_index * layout.original_stride;
+        const uint32_t dst_base = vertex_index * layout.translated_stride;
+        const uint32_t remaining = (src_base < stream_size) ? (stream_size - src_base) : 0;
+        const uint32_t source_size = std::min(layout.original_stride, remaining);
+
+        uint32_t src_cursor = 0;
+        uint32_t dst_cursor = 0;
+        for (const VertexStreamPaddingPatch &patch : layout.padding_patches) {
+            if (src_cursor >= source_size)
+                break;
+
+            const uint32_t copy_end = std::min(patch.source_copy_end, source_size);
+            if (copy_end > src_cursor) {
+                const uint32_t copy_size = copy_end - src_cursor;
+                memcpy(repacked.data() + dst_base + dst_cursor, stream + src_base + src_cursor, copy_size);
+                src_cursor += copy_size;
+                dst_cursor += copy_size;
+            }
+
+            dst_cursor += patch.padding_size;
+        }
+
+        if (src_cursor < source_size) {
+            const uint32_t copy_size = source_size - src_cursor;
+            memcpy(repacked.data() + dst_base + dst_cursor, stream + src_base + src_cursor, copy_size);
+        }
+    }
+
+    return repacked;
+}
 
 void set_uniform_buffer(VKContext &context, MemState &mem, const ShaderProgram *program, const bool vertex_shader, const int block_num, const int size, Ptr<uint8_t> data) {
     auto offset = program->uniform_buffer_data_offsets.at(block_num);
@@ -34,6 +72,7 @@ void set_uniform_buffer(VKContext &context, MemState &mem, const ShaderProgram *
     }
 
     const uint32_t data_size_upload = std::min<uint32_t>(size, program->uniform_buffer_sizes.at(block_num) * 4);
+
     if (context.state.features.enable_memory_mapping) {
         if (context.state.mapping_method == MappingMethod::DoubleBuffer) {
             // we must always cover everything as some small part of the buffer may get changed only
@@ -291,7 +330,10 @@ static void bind_vertex_streams(VKContext &context, MemState &mem, uint32_t inst
 
     for (int i = 0; i < max_stream_idx; i++) {
         if (state.vertex_streams[i].data) {
-            if (context.state.features.enable_memory_mapping) {
+            const VertexStreamLayoutInfo stream_layout = context.state.pipeline_cache.get_vertex_stream_layout(vertex_program, i);
+            const bool needs_repack = stream_layout.needs_repack;
+
+            if (context.state.features.enable_memory_mapping && !needs_repack) {
                 auto [buffer, offset] = context.state.get_matching_mapping(state.vertex_streams[i].data.cast<void>());
 
                 context.vertex_stream_offsets[i] = offset;
@@ -299,14 +341,22 @@ static void bind_vertex_streams(VKContext &context, MemState &mem, uint32_t inst
             } else {
                 const uint8_t *stream = state.vertex_streams[i].data.get(mem);
                 uint32_t stream_size = state.vertex_streams[i].size;
+                std::vector<uint8_t> repacked_stream;
+
+                if (needs_repack) {
+                    repacked_stream = repack_vertex_stream(stream, stream_size, stream_layout);
+                    stream = repacked_stream.data();
+                    stream_size = static_cast<uint32_t>(repacked_stream.size());
+                }
 #ifdef __APPLE__
                 // Vulkan allows any stride, but Metal only allows multiples of 4.
-                const bool restride = vertex_program.streams[i].stride % 4 != 0;
+                const bool restride = stream_layout.translated_stride % 4 != 0;
                 if (restride) {
-                    restride_stream(stream, stream_size, vertex_program.streams[i].stride);
+                    restride_stream(stream, stream_size, stream_layout.translated_stride);
                 }
 #endif
                 context.vertex_stream_ring_buffer.allocate(context.prerender_cmd, stream_size, stream);
+                context.vertex_stream_buffers[i] = context.vertex_stream_ring_buffer.handle();
                 context.vertex_stream_offsets[i] = context.vertex_stream_ring_buffer.data_offset;
 
 #ifdef __APPLE__
@@ -498,7 +548,6 @@ void draw(VKContext &context, SceGxmPrimitiveType type, SceGxmIndexFormat format
         context.index_stream_ring_buffer.allocate(context.prerender_cmd, index_buffer_size, indices_ptr);
         context.render_cmd.bindIndexBuffer(context.index_stream_ring_buffer.handle(), context.index_stream_ring_buffer.data_offset, index_type);
     }
-
     // bind the vertex streams
     bind_vertex_streams(context, mem, instance_count, max_index);
 

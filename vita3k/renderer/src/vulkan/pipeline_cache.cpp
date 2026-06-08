@@ -38,6 +38,70 @@
 
 namespace renderer::vulkan {
 
+struct TranslatedAttributeInfo {
+    SceGxmAttributeFormat attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_F32;
+    uint8_t component_count = 0;
+    uint32_t array_size = 1;
+    uint32_t array_element_size = 0;
+    uint32_t original_attribute_size = 0;
+    bool uses_rgb_padding = false;
+    vk::Format format = vk::Format::eUndefined;
+};
+
+static TranslatedAttributeInfo translate_vertex_attribute(const SceGxmVertexAttribute &attribute, const shader::usse::AttributeInformation &info,
+    const std::set<vk::Format> &unsupported_rgb_vertex_attribute_formats, bool support_scaled_vertex_attribute) {
+    TranslatedAttributeInfo translated{};
+    translated.attribute_format = attribute.format;
+    translated.component_count = attribute.componentCount;
+
+    if (info.regformat) {
+        translated.component_count = info.component_count;
+        switch (info.gxm_type) {
+        case SCE_GXM_PARAMETER_TYPE_U8:
+        case SCE_GXM_PARAMETER_TYPE_S8:
+        case SCE_GXM_PARAMETER_TYPE_C10:
+            translated.attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_U8;
+            break;
+        case SCE_GXM_PARAMETER_TYPE_U16:
+        case SCE_GXM_PARAMETER_TYPE_S16:
+        case SCE_GXM_PARAMETER_TYPE_F16:
+            translated.attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_U16;
+            break;
+        default:
+            translated.attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_UNTYPED;
+            break;
+        }
+
+        if (info.gxm_type == SCE_GXM_PARAMETER_TYPE_C10)
+            translated.component_count = (translated.component_count * 10 + 7) / 8;
+
+        if (translated.component_count > 4) {
+            translated.array_size = (translated.component_count + 3) / 4;
+            translated.array_element_size = 4 * gxm::attribute_format_size(translated.attribute_format);
+            translated.component_count = 4;
+        }
+
+        translated.original_attribute_size = gxm::attribute_format_size(translated.attribute_format) * translated.component_count;
+        translated.format = translate_attribute_format(translated.attribute_format, translated.component_count, true, false);
+        if (translated.component_count == 3 && unsupported_rgb_vertex_attribute_formats.contains(translated.format)) {
+            translated.component_count = 4;
+            translated.uses_rgb_padding = true;
+            translated.format = translate_attribute_format(translated.attribute_format, translated.component_count, true, false);
+        }
+    } else {
+        const bool is_integer = !support_scaled_vertex_attribute ? true : info.is_integer;
+        translated.original_attribute_size = gxm::attribute_format_size(translated.attribute_format) * translated.component_count;
+        translated.format = translate_attribute_format(translated.attribute_format, translated.component_count, is_integer, info.is_signed);
+        if (translated.component_count == 3 && unsupported_rgb_vertex_attribute_formats.contains(translated.format)) {
+            translated.component_count = 4;
+            translated.uses_rgb_padding = true;
+            translated.format = translate_attribute_format(translated.attribute_format, translated.component_count, is_integer, info.is_signed);
+        }
+    }
+
+    return translated;
+}
+
 // Size of the record containing what is needed for the pipeline construction (what is after is dynamic state)
 constexpr size_t record_pipeline_len = offsetof(GxmRecordState, vertex_streams);
 
@@ -73,38 +137,39 @@ void PipelineCache::init(bool support_rasterized_order_access) {
 
     // the layout for uniforms buffer can be made here as it will always be the same
     {
-        std::array<vk::DescriptorSetLayoutBinding, 4> layout_bindings;
+        std::vector<vk::DescriptorSetLayoutBinding> layout_bindings;
         // Our vertex uniform (GXMRenderVertUniformBlock)
-        layout_bindings[0] = vk::DescriptorSetLayoutBinding{
+        layout_bindings.push_back(vk::DescriptorSetLayoutBinding{
             .binding = 0,
             .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eVertex,
-        };
+        });
         // Our fragment uniform (GXMRenderFragUniformBlock)
-        layout_bindings[1] = vk::DescriptorSetLayoutBinding{
+        layout_bindings.push_back(vk::DescriptorSetLayoutBinding{
             .binding = 1,
             .descriptorType = vk::DescriptorType::eUniformBufferDynamic,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eFragment,
-        };
-        // GXM vertex uniform (if no memory mapping)
-        layout_bindings[2] = vk::DescriptorSetLayoutBinding{
-            .binding = 2,
-            .descriptorType = vk::DescriptorType::eStorageBufferDynamic,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eVertex,
-        };
-        // GXM Fragment uniform (if no memory mapping)
-        layout_bindings[3] = vk::DescriptorSetLayoutBinding{
-            .binding = 3,
-            .descriptorType = vk::DescriptorType::eStorageBufferDynamic,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eFragment,
-        };
-
+        });
+        if (!state.features.enable_memory_mapping) {
+            // GXM vertex uniform (if no memory mapping)
+            layout_bindings.push_back(vk::DescriptorSetLayoutBinding{
+                .binding = 2,
+                .descriptorType = vk::DescriptorType::eStorageBufferDynamic,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eVertex,
+            });
+            // GXM Fragment uniform (if no memory mapping)
+            layout_bindings.push_back(vk::DescriptorSetLayoutBinding{
+                .binding = 3,
+                .descriptorType = vk::DescriptorType::eStorageBufferDynamic,
+                .descriptorCount = 1,
+                .stageFlags = vk::ShaderStageFlagBits::eFragment,
+            });
+        }
         vk::DescriptorSetLayoutCreateInfo descriptor_info{
-            .bindingCount = state.features.enable_memory_mapping ? 2U : 4U,
+            .bindingCount = static_cast<uint32_t>(layout_bindings.size()),
             .pBindings = layout_bindings.data()
         };
         uniforms_layout = state.device.createDescriptorSetLayout(descriptor_info);
@@ -191,7 +256,6 @@ void PipelineCache::init(bool support_rasterized_order_access) {
     {
         // look for rgb vertex attribute support
         // we need to look at each format because it is not the same for all usual 3-component formats (checked on AMD Radeon HD 7800)
-        // no need to test for 32-bit types, they are always supported
         vk::Format formats[] = {
             vk::Format::eR16G16B16Unorm, vk::Format::eR16G16B16Snorm,
             vk::Format::eR16G16B16Uscaled, vk::Format::eR16G16B16Sscaled,
@@ -199,13 +263,22 @@ void PipelineCache::init(bool support_rasterized_order_access) {
             vk::Format::eR16G16B16Sfloat,
             vk::Format::eR8G8B8Unorm, vk::Format::eR8G8B8Snorm,
             vk::Format::eR8G8B8Uscaled, vk::Format::eR8G8B8Sscaled,
-            vk::Format::eR8G8B8Uint, vk::Format::eR8G8B8Sint
+            vk::Format::eR8G8B8Uint, vk::Format::eR8G8B8Sint,
+            vk::Format::eR32G32B32Uint, vk::Format::eR32G32B32Sint,
+            vk::Format::eR32G32B32Sfloat
         };
         for (auto fmt : formats) {
             vk::FormatProperties rgb_property = state.physical_device.getFormatProperties(fmt);
             if (!(rgb_property.bufferFeatures & vk::FormatFeatureFlagBits::eVertexBuffer)) {
                 unsupported_rgb_vertex_attribute_formats.emplace(fmt);
             }
+        }
+
+        if (state.physical_device_properties.vendorID == 0x1002) {
+            // RDNA-class AMD drivers can still misfetch tightly packed RGB vertex streams even when the format
+            // advertises vertex-buffer support. Force the padded RGBA repack path on AMD so we don't rely on
+            // hardware RGB fetch for interleaved layouts like F32x3/F16x3/F16x2 with odd strides.
+            unsupported_rgb_vertex_attribute_formats.insert(std::begin(formats), std::end(formats));
         }
 
         // same for scaled formats
@@ -428,6 +501,79 @@ void PipelineCache::cleanup() {
 
     next_pipeline_cache_save = std::numeric_limits<uint64_t>::max();
     nb_worker_threads = 0;
+}
+
+VertexStreamLayoutInfo PipelineCache::get_vertex_stream_layout(const SceGxmVertexProgram &vertex_program, uint32_t stream_index) const {
+    VertexStreamLayoutInfo layout{};
+    layout.original_stride = vertex_program.streams[stream_index].stride;
+    layout.translated_stride = layout.original_stride;
+    const bool force_safe_alignment = (state.physical_device_properties.vendorID == 0x1002);
+
+    VertexProgram *vkvert = vertex_program.renderer_data.get();
+    std::vector<std::pair<uint32_t, const SceGxmVertexAttribute *>> stream_attributes;
+    stream_attributes.reserve(vertex_program.attributes.size());
+
+    for (const SceGxmVertexAttribute &attribute : vertex_program.attributes) {
+        if (attribute.streamIndex != stream_index)
+            continue;
+        if (!vkvert->attribute_infos.contains(attribute.regIndex))
+            continue;
+
+        stream_attributes.emplace_back(attribute.offset, &attribute);
+    }
+
+    std::sort(stream_attributes.begin(), stream_attributes.end(), [](const auto &lhs, const auto &rhs) {
+        if (lhs.first != rhs.first)
+            return lhs.first < rhs.first;
+        return lhs.second->regIndex < rhs.second->regIndex;
+    });
+
+    uint32_t cumulative_padding = 0;
+    const auto append_padding = [&](uint32_t source_copy_end, uint32_t padding_size) {
+        if (padding_size == 0)
+            return;
+
+        layout.needs_repack = true;
+        if (!layout.padding_patches.empty() && layout.padding_patches.back().source_copy_end == source_copy_end) {
+            layout.padding_patches.back().padding_size += padding_size;
+        } else {
+            layout.padding_patches.push_back(VertexStreamPaddingPatch{
+                .source_copy_end = source_copy_end,
+                .padding_size = padding_size,
+            });
+        }
+        cumulative_padding += padding_size;
+    };
+
+    for (const auto &[_, attribute_ptr] : stream_attributes) {
+        const SceGxmVertexAttribute &attribute = *attribute_ptr;
+        const auto info = vkvert->attribute_infos.at(attribute.regIndex);
+        const TranslatedAttributeInfo translated = translate_vertex_attribute(attribute, info, unsupported_rgb_vertex_attribute_formats, support_scaled_vertex_attribute);
+
+        uint32_t translated_offset = attribute.offset + cumulative_padding;
+        if (force_safe_alignment) {
+            const uint32_t aligned_offset = (translated_offset + 3u) & ~3u;
+            append_padding(attribute.offset, aligned_offset - translated_offset);
+            translated_offset = attribute.offset + cumulative_padding;
+        }
+
+        layout.translated_offsets[attribute.regIndex] = translated_offset;
+        if (!translated.uses_rgb_padding)
+            continue;
+
+        layout.needs_repack = true;
+        const uint32_t component_size = gxm::attribute_format_size(translated.attribute_format);
+        const uint32_t padding_size = component_size * (translated.component_count - 3);
+        append_padding(attribute.offset + translated.original_attribute_size, padding_size);
+    }
+
+    if (force_safe_alignment) {
+        const uint32_t aligned_stride = (layout.original_stride + cumulative_padding + 3u) & ~3u;
+        append_padding(layout.original_stride, aligned_stride - (layout.original_stride + cumulative_padding));
+    }
+
+    layout.translated_stride += cumulative_padding;
+    return layout;
 }
 
 // Vulkan structs used to specify a specialization constant
@@ -677,80 +823,26 @@ vk::PipelineVertexInputStateCreateInfo PipelineCache::get_vertex_input_state(con
 
     uint32_t used_streams = 0;
 
+    std::array<VertexStreamLayoutInfo, SCE_GXM_MAX_VERTEX_STREAMS> stream_layouts{};
+
     for (const SceGxmVertexAttribute &attribute : vertex_program.attributes) {
         if (!vkvert->attribute_infos.contains(attribute.regIndex))
             continue;
 
         used_streams |= (1 << attribute.streamIndex);
+        if (stream_layouts[attribute.streamIndex].original_stride == 0)
+            stream_layouts[attribute.streamIndex] = get_vertex_stream_layout(vertex_program, attribute.streamIndex);
 
-        SceGxmAttributeFormat attribute_format = attribute.format;
         shader::usse::AttributeInformation info = vkvert->attribute_infos.at(attribute.regIndex);
+        const TranslatedAttributeInfo translated = translate_vertex_attribute(attribute, info, unsupported_rgb_vertex_attribute_formats, support_scaled_vertex_attribute);
+        const uint32_t translated_offset = stream_layouts[attribute.streamIndex].translated_offsets.at(attribute.regIndex);
 
-        uint8_t component_count = attribute.componentCount;
-        // these 2 values are only used when a matrix is used as a vertex attribute
-        // this is only supported for regformated attribute for now
-        // TODO: add support for matrix input for non-regformated attributes
-        uint32_t array_size = 1;
-        uint32_t array_element_size = 0;
-        vk::Format format;
-        if (info.regformat) {
-            // use the data from the shader itself
-            component_count = info.component_count;
-            switch (info.gxm_type) {
-            case SCE_GXM_PARAMETER_TYPE_U8:
-            case SCE_GXM_PARAMETER_TYPE_S8:
-            case SCE_GXM_PARAMETER_TYPE_C10:
-                attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_U8;
-                break;
-            case SCE_GXM_PARAMETER_TYPE_U16:
-            case SCE_GXM_PARAMETER_TYPE_S16:
-            case SCE_GXM_PARAMETER_TYPE_F16:
-                attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_U16;
-                break;
-            default:
-                // U32 format
-                attribute_format = SCE_GXM_ATTRIBUTE_FORMAT_UNTYPED;
-                break;
-            }
-
-            if (info.gxm_type == SCE_GXM_PARAMETER_TYPE_C10)
-                // this is 10-bit and not 8-bit
-                component_count = (component_count * 10 + 7) / 8;
-
-            if (component_count > 4) {
-                // a matrix is used as an attribute, pack everything into an array of vec4
-                array_size = (component_count + 3) / 4;
-                array_element_size = 4 * gxm::attribute_format_size(attribute_format);
-                component_count = 4;
-            }
-
-            // regformat attributes are int32
-            format = translate_attribute_format(attribute_format, component_count, true, false);
-            if (component_count == 3 && unsupported_rgb_vertex_attribute_formats.contains(format)) {
-                component_count = 4;
-                format = translate_attribute_format(attribute_format, component_count, true, false);
-            }
-        } else {
-            // some Android GPUs do not support scaled attributes, do the conversion in the GPU instead
-            if (!support_scaled_vertex_attribute)
-                info.is_integer = true;
-
-            // some AMD GPUs do not support rgb vertex attributes, so just put it as rgba
-            // the 4th component will contain garbage but this is not an issue because the input
-            // in the shader will be vec3 (or ivec3) and the 4th component will be discarded
-            format = translate_attribute_format(attribute_format, component_count, info.is_integer, info.is_signed);
-            if (component_count == 3 && unsupported_rgb_vertex_attribute_formats.contains(format)) {
-                component_count = 4;
-                format = translate_attribute_format(attribute_format, component_count, info.is_integer, info.is_signed);
-            }
-        }
-
-        for (uint32_t i = 0; i < array_size; i++) {
+        for (uint32_t i = 0; i < translated.array_size; i++) {
             attr_descr.push_back(vk::VertexInputAttributeDescription{
                 .location = info.location + i,
                 .binding = attribute.streamIndex,
-                .format = format,
-                .offset = attribute.offset + i * array_element_size });
+                .format = translated.format,
+                .offset = translated_offset + i * translated.array_element_size });
         }
     }
 
@@ -763,9 +855,9 @@ vk::PipelineVertexInputStateCreateInfo PipelineCache::get_vertex_input_state(con
         const bool is_instanced = gxm::is_stream_instancing(static_cast<SceGxmIndexSource>(stream.indexSource));
 
 #ifdef __APPLE__
-        const uint32_t stride = align(stream.stride, 4);
+        const uint32_t stride = align(stream_layouts[stream_index].translated_stride, 4);
 #else
-        const uint32_t stride = stream.stride;
+        const uint32_t stride = stream_layouts[stream_index].translated_stride;
 #endif
         binding_descr.push_back(vk::VertexInputBindingDescription{
             .binding = stream_index,

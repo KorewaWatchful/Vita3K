@@ -52,6 +52,7 @@ VKContext::VKContext(VKState &state, MemState &mem)
     fragment_uniform_stream_ring_buffer.alignment = storage_alignment;
     vertex_info_uniform_buffer.alignment = uniform_alignment;
     fragment_info_uniform_buffer.alignment = uniform_alignment;
+    vertex_stream_ring_buffer.create();
 
     if (state.features.enable_memory_mapping) {
         // use the default buffer
@@ -61,7 +62,6 @@ VKContext::VKContext(VKState &state, MemState &mem)
         gpu_request_wait_thread = std::thread(&VKContext::wait_thread_function, this, std::ref(mem));
     } else {
         // these are not needed when using memory mapping
-        vertex_stream_ring_buffer.create();
         index_stream_ring_buffer.create();
         vertex_uniform_stream_ring_buffer.create();
         fragment_uniform_stream_ring_buffer.create();
@@ -88,17 +88,17 @@ VKContext::VKContext(VKState &state, MemState &mem)
 
     // allocate descriptor pools
     {
-        const uint32_t nb_descriptor = state.features.enable_memory_mapping ? 2U : 4U;
-
-        std::array<vk::DescriptorPoolSize, 2> pool_sizes = {
+        std::vector<vk::DescriptorPoolSize> pool_sizes = {
             vk::DescriptorPoolSize{ vk::DescriptorType::eUniformBufferDynamic, 2 },
-            vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBufferDynamic, 2 },
         };
+        if (!state.features.enable_memory_mapping) {
+            pool_sizes.push_back(vk::DescriptorPoolSize{ vk::DescriptorType::eStorageBufferDynamic, 2 });
+        }
 
         vk::DescriptorPoolCreateInfo descriptor_pool_info{
             // one for the global buffer descriptor, one for the empty descriptor
             .maxSets = 2,
-            .poolSizeCount = nb_descriptor / 2,
+            .poolSizeCount = static_cast<uint32_t>(pool_sizes.size()),
             .pPoolSizes = pool_sizes.data()
         };
 
@@ -117,35 +117,40 @@ VKContext::VKContext(VKState &state, MemState &mem)
         // update it now (will not be updated after)
         constexpr uint64_t vert_uniform_size = shader::RenderVertUniformBlockExtended::get_max_size();
         constexpr uint64_t frag_uniform_size = shader::RenderFragUniformBlockExtended::get_max_size();
-        std::array<vk::DescriptorBufferInfo, 4> buffers_info = {
+        std::vector<vk::WriteDescriptorSet> write_descr;
+        std::vector<vk::DescriptorBufferInfo> buffers_info = {
             vk::DescriptorBufferInfo{
                 .buffer = vertex_info_uniform_buffer.handle(),
                 .range = vert_uniform_size },
             vk::DescriptorBufferInfo{
                 .buffer = fragment_info_uniform_buffer.handle(),
                 .range = frag_uniform_size },
-            vk::DescriptorBufferInfo{
-                .buffer = vertex_uniform_stream_ring_buffer.handle(),
-                // TODO: get max range of buffer
-                .range = KB(500) },
-            vk::DescriptorBufferInfo{
-                .buffer = fragment_uniform_stream_ring_buffer.handle(),
-                // TODO: get max range of buffer
-                .range = KB(500) },
         };
-
-        std::array<vk::WriteDescriptorSet, 4> write_descr;
-        for (uint32_t i = 0; i < 4; i++) {
-            write_descr[i] = vk::WriteDescriptorSet{
-                .dstSet = global_set,
-                .dstBinding = i,
-                .dstArrayElement = 0,
-                .descriptorType = i < 2 ? vk::DescriptorType::eUniformBufferDynamic : vk::DescriptorType::eStorageBufferDynamic
-            };
-            write_descr[i].setBufferInfo(buffers_info[i]);
+        if (!state.features.enable_memory_mapping) {
+            buffers_info.push_back(vk::DescriptorBufferInfo{
+                .buffer = vertex_uniform_stream_ring_buffer.handle(),
+                .range = KB(500) });
+            buffers_info.push_back(vk::DescriptorBufferInfo{
+                .buffer = fragment_uniform_stream_ring_buffer.handle(),
+                .range = KB(500) });
         }
 
-        state.device.updateDescriptorSets(nb_descriptor, write_descr.data(), 0, nullptr);
+        for (uint32_t i = 0; i < buffers_info.size(); i++) {
+            const uint32_t binding = i;
+            const vk::DescriptorType descriptor_type = (binding < 2)
+                ? vk::DescriptorType::eUniformBufferDynamic
+                : vk::DescriptorType::eStorageBufferDynamic;
+            vk::WriteDescriptorSet write{
+                .dstSet = global_set,
+                .dstBinding = binding,
+                .dstArrayElement = 0,
+                .descriptorType = descriptor_type
+            };
+            write.setBufferInfo(buffers_info[i]);
+            write_descr.push_back(write);
+        }
+
+        state.device.updateDescriptorSets(static_cast<uint32_t>(write_descr.size()), write_descr.data(), 0, nullptr);
     }
 }
 
